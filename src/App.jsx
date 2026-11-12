@@ -1,94 +1,207 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
-import MapView from "./map.jsx";
-import ReportForm from "./ReportForm.jsx";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Navbar from "./components/Navbar";
+import Toast from "./components/Toast";
+import LandingFooter from "./components/Landing/LandingFooter";
 
-function App() {
-  const [source, setSource] = useState("");
-  const [destination, setDestination] = useState("");
-  const [searchTrigger, setSearchTrigger] = useState(0);
+// Views
+import Landing from "./components/Landing/Landing";
+import Dashboard from "./components/Dashboard/Dashboard";
+import RoutePlanner from "./components/RoutePlanner/RoutePlanner";
+import DelhiInsights from "./components/DelhiInsights/DelhiInsights";
+import CommunityReports from "./components/CommunityReports/CommunityReports";
+import Profile from "./components/Profile/Profile";
+import Login from "./components/Auth/Login";
+import Register from "./components/Auth/Register";
+import ForgotPassword from "./components/Auth/ForgotPassword";
+
+const PATH_TO_TAB = {
+  "/": "landing",
+  "/home": "landing",
+  "/planner": "planner",
+  "/plan": "planner",
+  "/reports": "reports",
+  "/community": "reports",
+  "/insights": "insights",
+  "/dashboard": "dashboard",
+  "/profile": "profile",
+  "/login": "login",
+  "/register": "register",
+  "/forgot-password": "forgot-password"
+};
+
+const TAB_TO_PATH = {
+  landing: "/",
+  planner: "/planner",
+  reports: "/community",
+  insights: "/insights",
+  dashboard: "/dashboard",
+  profile: "/profile",
+  login: "/login",
+  register: "/register",
+  "forgot-password": "/forgot-password"
+};
+
+function AppContent() {
+  const { isAuthenticated, loading } = useAuth();
+
+  // Tab state derived from current browser URL:
+  // 'landing' | 'planner' | 'reports' | 'insights' | 'dashboard' | 'profile' | 'login' | 'register' | 'forgot-password'
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname.toLowerCase();
+      return PATH_TO_TAB[path] || "landing";
+    }
+    return "landing";
+  });
+
+  const [prefillSource, setPrefillSource] = useState("");
+  const [prefillDestination, setPrefillDestination] = useState("");
+  const [toast, setToast] = useState(null);
+
+  // Sync browser back/forward buttons with tab view state
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      const tab = PATH_TO_TAB[path] || "landing";
+      setActiveTab(tab);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleSelectTab = (tab) => {
+    // Protected routes check
+    if ((tab === "dashboard" || tab === "profile") && !isAuthenticated) {
+      setToast({
+        type: "info",
+        message: "Please log in to access your personal dashboard and profile."
+      });
+      setActiveTab("login");
+      if (window.location.pathname !== "/login") {
+        window.history.pushState({}, "", "/login");
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    setActiveTab(tab);
+    const targetPath = TAB_TO_PATH[tab] || "/";
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, "", targetPath);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handlePrefillRoute = (src, dest) => {
+    setPrefillSource(src);
+    setPrefillDestination(dest);
+  };
+
+  if (loading) {
+    return (
+      <div
+        className="app-loading-screen"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#fff8fb"
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontSize: "36px", display: "block", marginBottom: "12px" }}>🛡️</span>
+          <div
+            className="spinner"
+            style={{ width: "24px", height: "24px", borderColor: "#f5dce8", borderTopColor: "#df5790" }}
+          />
+          <p style={{ marginTop: "12px", color: "#6b6375", fontSize: "14px", fontWeight: 600 }}>
+            Loading SafeRoute...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Derive current effective tab based on authentication guards
+  let currentTab = activeTab;
+  if (!isAuthenticated && (activeTab === "dashboard" || activeTab === "profile")) {
+    currentTab = "landing";
+  }
 
   return (
     <div className="app">
-      <nav className="navbar">
-        <h2>🛡️ SafeRoute</h2>
-        <span>Safer journeys, stronger women.</span>
-      </nav>
+      {/* Main Navbar - 4 Primary Public Destinations + Auth */}
+      <Navbar activeTab={currentTab} onSelectTab={handleSelectTab} />
 
-      <main className="hero">
-        <p className="tagline">YOUR SAFETY, OUR PRIORITY</p>
-
-        <h1>
-          Not just the fastest route.<br />
-          <span>The safer one.</span>
-        </h1>
-
-        <p className="subtitle">
-          Find safer routes, compare safety scores and travel with confidence.
-        </p>
-
-        <section className="search-card">
-          <h2>Plan your safe journey</h2>
-
-          <label>Starting point</label>
-          <input
-            placeholder="e.g. Dwarka, New Delhi"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
+      {/* Page Content View Router */}
+      <main className="main-content-area">
+        {currentTab === "landing" && (
+          <Landing
+            onNavigate={handleSelectTab}
+            onPrefillRoute={handlePrefillRoute}
           />
+        )}
 
-          <label>Destination</label>
-          <input
-            placeholder="e.g. India Gate, New Delhi"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
+        {currentTab === "dashboard" && (
+          <Dashboard
+            onNavigate={handleSelectTab}
+            onPrefillRoute={handlePrefillRoute}
           />
+        )}
 
-          <button onClick={() => setSearchTrigger((prev) => prev + 1)}>
-            Find Safe Routes →
-          </button>
-        </section>
-
-        <section className="map-section">
-          <h2>Explore your routes</h2>
-          <p>Enter your locations to discover available routes.</p>
-
-          <MapView
-            source={source}
-            destination={destination}
-            searchTrigger={searchTrigger}
+        {currentTab === "planner" && (
+          <RoutePlanner
+            key={`${prefillSource}-${prefillDestination}`}
+            initialSource={prefillSource}
+            initialDestination={prefillDestination}
           />
-          <ReportForm />
-        </section>
+        )}
 
-        <section className="features">
-          <div>
-            <span>🗺️</span>
-            <h3>Smart Routes</h3>
-            <p>Compare different travel routes.</p>
-          </div>
+        {currentTab === "insights" && <DelhiInsights />}
 
-          <div>
-            <span>🛡️</span>
-            <h3>Safety Scores</h3>
-            <p>Understand route safety indicators.</p>
-          </div>
+        {currentTab === "reports" && (
+          <CommunityReports
+            onShowToast={setToast}
+          />
+        )}
 
-          <div>
-            <span>📢</span>
-            <h3>Community Reports</h3>
-            <p>Share and view safety concerns.</p>
-          </div>
-        </section>
+        {currentTab === "profile" && (
+          <Profile
+            onShowToast={setToast}
+            onNavigateToPlanner={() => handleSelectTab("planner")}
+          />
+        )}
 
-        <p className="disclaimer">
-          SafeRoute is a prototype. Safety scores are illustrative and do not
-          guarantee personal safety.
-        </p>
+        {currentTab === "login" && (
+          <Login onNavigate={handleSelectTab} onShowToast={setToast} />
+        )}
+
+        {currentTab === "register" && (
+          <Register onNavigate={handleSelectTab} onShowToast={setToast} />
+        )}
+
+        {currentTab === "forgot-password" && (
+          <ForgotPassword onNavigate={handleSelectTab} onShowToast={setToast} />
+        )}
       </main>
+
+      {/* Global Platform Footer across all four public destinations */}
+      <LandingFooter onNavigate={handleSelectTab} />
+
+      {/* Global Toast Alerts */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}

@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node scripts/verifySystem.js && node scripts/securityAuditSimulation.js && node scripts/testRealDatabaseSecurity.js",
+    "test:security": "node scripts/securityAuditSimulation.js",
+    "test:db-security": "node scripts/testRealDatabaseSecurity.js",
     "preview": "vite preview"
   },
   "dependencies": {
