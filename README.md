@@ -1,9 +1,11 @@
 # SafeRoute 🛡️
-### Safer Journeys, Stronger Women — Demonstration-Ready Platform
+### Safer Journeys, Stronger Women — Standalone Web Application
 
-SafeRoute is a women's safety-focused navigation and public awareness web application built to empower commuters across Delhi NCR with drivable road routing alternatives, verified crime statistics, and crowdsourced community safety notices.
+SafeRoute is a women's safety-focused navigation and public awareness web application built to empower commuters across Delhi NCR with drivable road routing alternatives, verified government crime statistics, and crowdsourced community safety notices.
 
 Unlike conventional navigation applications that solely prioritize the fastest path, SafeRoute emphasizes informed decision-making, contextual public safety transparency, and community-reported street infrastructure observations.
+
+SafeRoute operates as a **privacy-first, standalone client-side web application** utilizing browser local storage for persistent data management, eliminating unnecessary login barriers and external database dependencies.
 
 ---
 
@@ -12,31 +14,34 @@ Unlike conventional navigation applications that solely prioritize the fastest p
 1. [Key Features & Capabilities](#-key-features--capabilities)
 2. [Verified Delhi Crime Data Integration](#-verified-delhi-crime-data-integration)
 3. [Architecture & Tech Stack](#-architecture--tech-stack)
-4. [Database Architecture & Security (Supabase)](#-database-architecture--security-supabase)
+4. [Community Reporting & Local Data Storage](#-community-reporting--local-data-storage)
 5. [Local Development Quickstart](#-local-development-quickstart)
-6. [Supabase Setup & SQL Migration Guide](#-supabase-setup--sql-migration-guide)
-7. [Vercel Deployment Guide](#-vercel-deployment-guide)
-8. [Demonstration Scenarios (For Evaluators & Video Recording)](#-demonstration-scenarios-for-evaluators--video-recording)
-9. [Data Methodology, Ethics & Transparency](#-data-methodology-ethics--transparency)
+6. [Vercel Deployment Guide](#-vercel-deployment-guide)
+7. [Demonstration Scenarios (For Evaluators & Video Recording)](#-demonstration-scenarios-for-evaluators--video-recording)
+8. [Data Methodology, Ethics & Transparency](#-data-methodology-ethics--transparency)
+9. [Current Limitations](#-current-limitations)
+10. [Archived Cloud Database Architecture](#-archived-cloud-database-architecture)
 
 ---
 
 ## ✨ Key Features & Capabilities
 
-- **Real Road Routing via OSRM & Nominatim:** Computes actual drivable road routes across Delhi using Project-OSRM and OpenStreetMap Nominatim with robust status checking, network failure handling, and request timeouts.
-- **Alternative Routes & Interactive Selection:** Displays all returned route alternatives with distance in kilometers and duration in minutes. Users can interactively select any route card or map polyline to highlight the active route and update metrics dynamically.
-- **Strict Data Transparency:** Clearly distinguishes between road calculation and crime risk. No artificial route safety scores or fabricated micro-hotspots are generated from citywide aggregates.
+- **Real Road Routing via OSRM & Nominatim:** Computes actual drivable road routes across Delhi NCR using Project-OSRM and OpenStreetMap Nominatim with status checking, network failure handling, and request timeouts.
+- **Alternative Routes & Interactive Selection:** Displays returned road alternatives with distance in kilometers and duration in minutes. Users can interactively select any route card or map polyline to highlight the active route and inspect metrics.
+- **Strict Data Transparency:** Clearly distinguishes between road calculation and crime risk. No artificial route safety scores or fabricated micro-hotspots are generated from citywide crime aggregates.
 - **Empirical Delhi Crime Data:** Structured datasets covering 4-year NCRB registered crime trends (2021–2024), 2024 IPC/BNS categorical heads, offender-victim relationship analyses (97.3% known perpetrators), and a separate Ministry of Home Affairs (MHA) Delhi Police series.
-- **Supabase Authentication:** Complete authentication system supporting email/password registration, login with show/hide password, session restoration across refreshes, password reset dispatches, and protected routes.
-- **PostgreSQL Community Reporting:** Crowdsourced reporting for street lighting failures, suspicious activity, and infrastructure concerns with Row-Level Security (RLS) enforcement, optional GPS tagging with explicit consent, and privacy preservation (reporter emails are never publicly exposed).
-- **Profile & Emergency Safety Hub:** Personal dashboard displaying submitted reports (with deletion controls) and a verified Delhi emergency helpline directory (1091, 112, 100, NCW, and DMRC).
+- **Privacy-First Anonymous Community Reporting:** Commuters can report infrastructure hazards (e.g. broken streetlights, unlit stretches, poor visibility) without creating an account, logging in, or disclosing any personal contact information.
+- **Locality Privacy & PII Safeguards:** Automated client-side sanitization strips dangerous tags, rejects phone numbers and emails, blocks private residential addresses (flat/house numbers), and normalizes free-form inputs to 31 approved Delhi NCR transit/commercial sectors.
+- **Coordinate Privacy (~100m Approximation):** Device geolocation is requested only upon explicit user consent and rounded to 3 decimal places (~100m locality radius), protecting pinpoint user coordinates.
+- **Persistent Local Browser Storage:** Community notices are stored and managed using HTML5 `localStorage`, persisting reliably across browser refreshes and sessions without requiring external backend servers.
+- **Emergency Helpline Directory:** One-tap verified directory for emergency services: 112 (Primary Police Response), 1091 (Delhi Police Women Helpline), 181 (Delhi Govt WCD Helpline), and 155370 (DMRC Metro Helpline).
 - **Responsive & Accessible Design:** Cohesive visual identity maintaining SafeRoute's signature blush-pink, rose-white, and dark-plum palette across desktop, tablet, and mobile browsers.
 
 ---
 
 ## 📊 Verified Delhi Crime Data Integration
 
-SafeRoute utilizes strictly documented official statistics from National Crime Records Bureau (NCRB) publications, Ministry of Home Affairs parliamentary replies, and the Directorate of Economics & Statistics (DES):
+SafeRoute utilizes strictly documented official statistics embedded directly in the application ([src/data/delhiCrimeData.js](file:///src/data/delhiCrimeData.js)), sourced from National Crime Records Bureau (NCRB) publications, Ministry of Home Affairs parliamentary replies, and the Delhi Directorate of Economics & Statistics (DES):
 
 ### Dataset A: NCRB Delhi State/UT Annual Registered Cases (2021–2024)
 - **2021:** 14,277 registered cases
@@ -75,89 +80,88 @@ SafeRoute utilizes strictly documented official statistics from National Crime R
 
 ```
 SafeRoute/
-├── public/                     # Static assets
+├── docs/
+│   └── database/               # Archived PostgreSQL migrations, RLS policies & Edge Functions
+├── public/                     # Static brand assets (favicons, logos, SVGs)
 ├── scripts/
-│   ├── verifySystem.js         # Automated data integrity & test suite
-│   ├── securityAuditSimulation.js # 42-point adversarial attack & security simulation
-│   └── testRealDatabaseSecurity.js # Live PostgreSQL integration security test
+│   ├── verifySystem.js         # Core module & official crime dataset verification suite
+│   ├── securityAuditSimulation.js # 84-assertion adversarial security & privacy test suite
+│   └── testRealDatabaseSecurity.js # Optional real database test runner
 ├── src/
-│   ├── assets/                 # Icons and imagery
+│   ├── assets/                 # Component assets
 │   ├── components/
-│   │   ├── Auth/               # Login, Register, ForgotPassword views
-│   │   ├── CommunityReports/   # Crowdsourced reporting form & sanitized shared feed
-│   │   ├── Dashboard/          # Welcome banner, quick planner, analytics snapshot
+│   │   ├── Auth/               # Client-side Login, Register & ForgotPassword views
+│   │   ├── Brand/              # SVG brand logos & lockups
+│   │   ├── CommunityReports/   # Crowdsourced reporting form & persistent notices feed
+│   │   ├── Dashboard/          # Welcome banner, quick planner & metrics snapshot
 │   │   ├── DelhiInsights/      # Interactive NCRB & MHA statistical charts
-│   │   ├── Landing/            # Brand hero, quick lookup, core pillars
-│   │   ├── Profile/            # Account details, my reports, emergency directory, TOTP MFA
-│   │   ├── RoutePlanner/       # OSRM navigation & interactive alternative selection
-│   │   ├── Navbar.jsx          # Responsive sticky navigation bar
-│   │   ├── SupabaseConfigBanner.jsx # Real-time backend connection diagnostic banner
-│   │   └── Toast.jsx           # Dismissible status notification alerts
+│   │   ├── Landing/            # Brand hero, quick lookup, core pillars & footer
+│   │   ├── Profile/            # Client profile management, my reports & emergency directory
+│   │   ├── RoutePlanner/       # Leaflet map, OSRM routing & interactive alternatives
+│   │   ├── Navbar.jsx          # Responsive sticky navigation bar (4 primary destinations)
+│   │   └── Toast.jsx           # Global status notification toasts
 │   ├── context/
-│   │   └── AuthContext.jsx     # Supabase auth state, session persistence & demo mode
+│   │   └── AuthContext.jsx     # Standalone client session & demo guest mode provider
 │   ├── data/
 │   │   ├── delhiCrimeData.js   # Structured official datasets, metadata & citations
-│   │   └── safetyData.js       # Legacy reference data
+│   │   └── emergencyHelplines.js # Verified 112, 1091, 181 & 155370 directory
 │   ├── lib/
-│   │   └── supabaseClient.js   # Singleton Supabase client with status detection
+│   │   └── supabaseClient.js   # Diagnostic configuration stub for standalone mode
 │   ├── services/
-│   │   └── reportService.js    # PostgreSQL database service for community reports
-│   ├── App.css                 # SafeRoute design system & responsive styling
-│   ├── App.jsx                 # Application root & view router
-│   ├── index.css               # Global typography & root container
-│   ├── main.jsx                # React DOM mount point & Leaflet CSS
+│   │   ├── profileService.js   # Local browser storage service for user preferences
+│   │   └── reportService.js    # LocalStorage community reporting service with PII validation
+│   ├── App.css                 # SafeRoute design system & responsive layout styles
+│   ├── App.jsx                 # Application root & client-side view router
+│   ├── index.css               # Global typography & root variables
+│   ├── main.jsx                # React DOM entry point & Leaflet stylesheet
 │   └── map.jsx                 # Leaflet interactive map component
-├── supabase/
-│   ├── migrations/
-│   │   ├── 20261112_init_saferoute.sql # Baseline schema
-│   │   ├── 20261112_security_hardening.sql # Dedicated profiles table & RLS user isolation
-│   │   └── 20261112_final_security_corrections.sql # Final RPC hardening, revoked UPDATE, immutable profiles
-│   └── tests/
-│       └── database_security.test.sql # pgTAP PostgreSQL engine security test suite
-├── .env.example                # Environment variable template
-├── vercel.json                 # Vercel SPA rewrite & strict security headers (CSP, HSTS)
+├── .env.example                # Template for optional external API configuration
+├── vercel.json                 # Vercel SPA rewrite configuration & security headers
 ├── vite.config.js              # Vite bundler configuration
 └── package.json                # Project dependencies and npm scripts
 ```
 
+### Technology Matrix
+
+| Layer | Technology | Details |
+| :--- | :--- | :--- |
+| **Frontend Framework** | **React 19** | Component-driven architecture using functional components and modern hooks. |
+| **Build & Tooling** | **Vite 8** | Rapid development server with optimized production bundling (830ms build). |
+| **Icons & Visuals** | **Lucide React** | Clean, accessible SVG iconography. |
+| **Mapping Engine** | **Leaflet & React-Leaflet** | Lightweight, open-source interactive mapping. |
+| **Tile Provider** | **OpenStreetMap** | Raster tiles via `https://*.tile.openstreetmap.org`. No API key required. |
+| **Geocoding** | **OSM Nominatim** | Public geocoding API with Delhi NCR location queries. |
+| **Route Calculation** | **Project-OSRM** | Multi-alternative road route generation with driving/walking metrics. |
+| **Data Persistence** | **Browser localStorage** | HTML5 client-side storage for community reports and preferences. |
+
 ---
 
-## 🗄️ Database Architecture & Security (Supabase)
+## 📝 Community Reporting & Local Data Storage
 
-The backend runs on Supabase (PostgreSQL) with strict **Row Level Security (RLS)** and database-level authorization:
+SafeRoute's community reporting architecture is built on a **privacy-by-default, data-minimized model**:
 
-### 1. Private User Profiles Table (`public.profiles`)
-- `id`: UUID primary key referencing `auth.users(id)` ON DELETE CASCADE.
-- `email`: Text (populated from verified auth identity).
-- `full_name`, `phone_number`, `emergency_contact`, `preferred_language`: Private user attributes.
-- **RLS Access Rule:** Accessible strictly by the authenticated profile owner (`auth.uid() = id`).
-- **Immutable Fields Trigger:** Trigger `trg_protect_profile_immutable_fields` enforces that users cannot modify `id`, `email`, or inject administrative claims.
-- **Access Privileges:** All access revoked from `anon` and `PUBLIC`. Only `authenticated` users can read/modify their own record.
+### 1. Account-Free Submission
+- Commuters are **never required** to create an account, log in, or provide a username, email address, or phone number to share a public infrastructure notice.
+- The 4 primary public destinations (Home, Plan Your Journey, Community, Safety Insights) are completely unrestricted.
 
-### 2. Community Reports Table (`public.community_reports`)
-- `id`: UUID primary key (`gen_random_uuid()`).
-- `user_id`: UUID foreign key derived securely from `auth.uid()`.
-- `area`: Text (2–150 chars).
-- `concern_type`: Text (strictly checked against enumerated categories).
-- `description`: Text (5–2000 chars; kept private to the report author).
-- `latitude`, `longitude`: Numeric (captured only upon explicit user click; kept private to author).
-- `status`: Text (forced to `'unverified'` upon creation).
-- `created_at`: Timestamptz (system UTC timestamp).
-- **Report Immutability:** `UPDATE` privilege is completely **REVOKED** from all roles (`authenticated`, `anon`, `PUBLIC`). Reports cannot be altered, spoofed, or self-elevated to "verified".
-- **RLS Access Rule:** Authenticated users can `INSERT`, `SELECT`, and `DELETE` strictly their own reports (`auth.uid() = user_id`).
+### 2. Client-Side PII Safeguards
+Every submitted report is filtered client-side before storage:
+- **Phone Number Rejection:** Submissions containing 7 or more consecutive digits are rejected with an explanatory privacy warning.
+- **Email Address Rejection:** Submissions containing email patterns are blocked.
+- **Residential Address Filtering:** Keywords such as `flat`, `apartment`, `house no`, `h.no`, `room`, and `floor` followed by numbers are rejected to prevent publishing private home addresses.
+- **Locality Normalization:** Free-form landmark inputs (e.g., `"Saket Metro Gate 2 lane"`) are mapped to standardized sector labels (`"Saket District Centre, South Delhi"`) via `normalizeLocalityLabel()`.
 
-### 3. Sanitized Shared Feed RPC (`public.get_sanitized_community_feed`)
-- Declared `SECURITY DEFINER` with empty search path (`SET search_path = ''`) and fully qualified catalog references.
-- Rejects unauthenticated callers immediately (`IF auth.uid() IS NULL THEN RAISE EXCEPTION...`).
-- `EXECUTE` privilege is completely **REVOKED** from `PUBLIC` and `anon`; granted strictly to `authenticated`.
-- Enforces validated pagination (`p_limit` capped between 1 and 100, `p_offset >= 0`).
-- Returns strictly sanitized fields: `id`, `area` (broad locality), `concern_type`, `status`, and `approximate_date` (truncated to day level via `pg_catalog.date_trunc('day', ...)`).
-- Completely excludes private descriptions, GPS coordinates, emails, and user IDs.
-- Obsolete view `public.public_community_reports` has been safely dropped.
+### 3. Coordinate Privacy
+- GPS location is **never captured automatically**.
+- Commuters may voluntarily tag coordinates using browser geolocation only when physically present at the hazard.
+- Coordinates are automatically rounded to 3 decimal places (`toFixed(3)`), providing an approximate **~100m locality radius** rather than pinpoint device tracking.
+- Commuters can click **Clear Pin** at any time to remove coordinates and submit purely by locality text.
 
-### 4. Two-Factor Authentication (TOTP MFA)
-- Integrated via Supabase Auth MFA (`supabase.auth.mfa.enroll`, `challengeAndVerify`).
-- Database verification helper function `public.is_mfa_verified()` checks if the session has achieved Authenticator Assurance Level 2 (`(auth.jwt()->>'aal') = 'aal2'`).
+### 4. Data Storage & Lifecycle
+- Community notices are stored in the user's browser via **`localStorage`** under the key `saferoute_community_reports`.
+- New reports are prepended to the local collection and persist across page refreshes and browser sessions.
+- **Important Multi-User Note:** Because data is stored in the local browser, notices submitted on one device or browser are **not synchronized across other users or external devices**.
+- **Initial Seed Notices:** SafeRoute includes pre-configured sample notices (covering Connaught Place, Dwarka Sector 12, and Saket District Centre) so evaluators can inspect the community feed immediately upon first launch.
 
 ---
 
@@ -178,26 +182,19 @@ cd SafeRoute
 npm install
 ```
 
-### 3. Run Automated System Verification
-Verify all crime data points, calculations, and service interfaces:
+### 3. Run Automated System Verification & Tests
+Execute the verification suite (38 system checks + 84 security simulation assertions):
 ```bash
 npm test
 ```
 
-### 4. Configure Environment Variables
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
-*(If Supabase credentials are not added yet, the application gracefully launches in **Demo Preview Mode** with an explicit diagnostic banner).*
-
-### 5. Start Development Server
+### 4. Start Development Server
 ```bash
 npm run dev
 ```
 Open the local URL displayed (typically `http://localhost:5173`) in your web browser.
 
-### 6. Run Production Build & Linting
+### 5. Run Linter & Production Build
 ```bash
 npm run lint
 npm run build
@@ -205,56 +202,31 @@ npm run build
 
 ---
 
-## 🔐 Supabase Setup & SQL Migration Guide
-
-To connect your own real Supabase project:
-
-1. **Create Project:** Visit [supabase.com](https://supabase.com) and create a new project.
-2. **Execute Database Migration:**
-   - In your Supabase Dashboard, open the **SQL Editor**.
-   - Open the file `supabase/migrations/20261112_init_saferoute.sql` from this repository.
-   - Paste the SQL into the editor and click **Run**.
-   - This creates the `community_reports` table, indexes, RLS policies, and the sanitized `public_community_reports` view.
-3. **Configure Authentication:**
-   - In Supabase Dashboard, navigate to **Authentication** -> **Providers** -> **Email**.
-   - Ensure Email provider is enabled. (For development testing, you can disable "Confirm email" if you want users to log in immediately upon signup).
-4. **Copy API Credentials:**
-   - Navigate to **Project Settings** -> **API**.
-   - Copy **Project URL** and the **anon (public)** key.
-5. **Update `.env`:**
-   ```env
-   VITE_SUPABASE_URL=https://your-project-id.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOi...your-anon-key-here
-   ```
-6. **Restart Vite:**
-   Restart your dev server (`npm run dev`). The top diagnostic banner will confirm real Supabase connectivity, and user registrations and reports will store directly in PostgreSQL.
-
----
-
 ## ☁️ Vercel Deployment Guide
 
-SafeRoute is fully configured for continuous deployment on Vercel:
+SafeRoute is pre-configured for continuous zero-config deployment on Vercel:
 
-1. Push your changes to your GitHub repository.
+1. Push your repository changes to GitHub.
 2. In the [Vercel Dashboard](https://vercel.com), click **Add New** -> **Project**.
 3. Import your `SafeRoute` repository.
-4. Set Framework Preset: **Vite**.
-5. Set Build & Output Settings:
+4. Verify the build settings:
+   - **Framework Preset:** Vite
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
-6. Add Environment Variables:
-   - `VITE_SUPABASE_URL` = Your Supabase Project URL
-   - `VITE_SUPABASE_ANON_KEY` = Your Supabase anon key
-7. Click **Deploy**. The included `vercel.json` ensures client-side routes and page refreshes work seamlessly.
+   - **Root Directory:** `./`
+5. **No Environment Variables Required:** Because SafeRoute runs as a self-contained client-side application, no backend environment variables are needed for basic deployment.
+6. Click **Deploy**. The included [vercel.json](file:///vercel.json) configures:
+   - SPA route rewrites (`/(.*)` -> `/index.html`) so refreshing `/planner`, `/community`, or `/insights` works seamlessly.
+   - Strict security headers (`Content-Security-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `HSTS`).
 
 ---
 
 ## 🎥 Demonstration Scenarios (For Evaluators & Video Recording)
 
-SafeRoute includes two dedicated, reproducible demonstration flows designed for evaluation and video walkthroughs:
+SafeRoute includes three reproducible demonstration flows designed for evaluation and video walkthroughs:
 
 ### Demo Scenario 1: Delhi Safety Insights Walkthrough
-1. From the navigation bar, click **Delhi Safety Insights**.
+1. From the navigation bar, click **Safety Insights** (or `/insights`).
 2. **Dataset A (Annual Trend):** Inspect the 2021–2024 NCRB recorded cases trend (14,277 → 13,396). Click on any year's bar to view the detailed registration context.
 3. **Dataset B (Categorical Breakdown):** Observe the 2024 totals (11,795 IPC/BNS + 1,601 SLL = 13,396 combined). Click on individual crime heads (Rape: 1,058, Outrage modesty: 755, Sexual harassment: 316, Assault/disrobe: 279, Stalking: 178, Voyeurism: 38) to view legal definitions and commuter relevance.
 4. **Dataset C (Offender Relationship):** Review the 97.3% known-perpetrator finding and read the technology scope boundary explaining why road navigation addresses transit corridors rather than domestic violence.
@@ -262,27 +234,28 @@ SafeRoute includes two dedicated, reproducible demonstration flows designed for 
 6. **Official Citations:** Scroll to the bottom to verify active links to NCRB and Rajya Sabha source documentation.
 
 ### Demo Scenario 2: Smart Journey Planning (Saket → Rohini)
-1. Navigate to **Plan a Journey** (or use the shortcut in the Dashboard).
-2. Click the preset button: **"Load: Saket → Rohini, Delhi"**.
+1. Navigate to **Plan Your Journey** (or `/planner`).
+2. Click the preset button: **"Saket → Rohini, Delhi"** (or type custom origin and destination landmarks).
 3. Click **Calculate Road Routes**.
 4. Observe:
-   - Nominatim geocodes Saket (South Delhi) and Rohini (North-West Delhi).
+   - OpenStreetMap Nominatim geocodes Saket (South Delhi) and Rohini (North-West Delhi).
    - OSRM computes actual driving routes across Delhi's arterial road network.
    - All returned alternative routes display with real distance (km) and travel duration (min).
-   - The map fits bounds, rendering green (start) and violet (destination) markers.
+   - The map fits bounds, rendering start and destination markers with interactive route polylines.
    - Click on different alternative route cards or map polylines to switch the highlighted active route.
    - Read the prominent **Important Safety Distinction** notice clarifying that route navigation is not ranked with aggregate crime figures.
 
-### Demo Scenario 3: Community Reporting & Live Database Persistence
-1. Navigate to **Community Reports**.
-2. Under "Submit a Safety Concern":
-   - Enter Area: `Connaught Place, Block M`
+### Demo Scenario 3: Community Reporting & Local Data Storage
+1. Navigate to **Community** (or `/community`).
+2. Notice the existing seed reports displayed in the shared community notices feed.
+3. Under "Submit a Safety Concern":
+   - Enter Area: `Saket District Centre` (or choose from the autocomplete datalist)
    - Select Category: `Street lighting issue`
    - Description: `Two high-mast lights out near pedestrian crossing.`
-   - (Optional) Click **Tag Current Location** to demonstrate consent-based coordinate capture.
-   - Click **Submit Community Report**.
-3. Confirm that the notice immediately appears in the shared community feed with the badge `"Community Submitted — Unverified"`.
-4. Navigate to **Profile / Account** to verify your report appears under "Your Submitted Safety Reports" with a functioning **Delete** control.
+   - (Optional) Click **Tag Hazard Location** to demonstrate consent-based coordinate capture (~100m approximation).
+   - Click **Submit Community Notice**.
+4. Observe the green confirmation card: *"Your safety concern has been recorded. It is permanently saved in browser storage and published as a Community Submitted — Unverified notice in the shared community feed."*
+5. Refresh the browser page (`F5`) to demonstrate that your new notice remains saved in the community feed via `localStorage`.
 
 ---
 
@@ -294,6 +267,29 @@ SafeRoute operates on strict principles of scientific integrity and user safety:
 2. **Reporting FIRs vs. True Victimization:** Official statistics record formal police First Information Reports. Due to social barriers and under-reporting, registered cases do not equal all incidents experienced.
 3. **Public Navigation vs. Domestic Violence:** Public-space navigation technologies focus on physical infrastructure—lighting, active thoroughfares, and emergency helplines. They cannot prevent domestic or intimate partner violence.
 4. **No Commercial Ranking of Speed as Safety:** The fastest route is not automatically labeled the safest. SafeRoute presents factual distance, duration, and transparent safety guidance to support informed travel.
+5. **Separation from Emergency Services:** SafeRoute is an informational navigation aid, not an emergency response system. In imminent danger, users are directed to call **112** immediately.
+
+---
+
+## ⚠️ Current Limitations
+
+- **Local-Only Notice Storage:** Community safety notices are saved to the user's browser `localStorage`. Submissions do not synchronize across different devices or separate user browsers without a connected central backend.
+- **Public Geocoding & Routing Limits:** Address lookup and route geometry calculation rely on public OpenStreetMap Nominatim and Project-OSRM endpoints, which may experience latency or rate limits during peak network traffic.
+- **Macroscopic Data Scope:** Crime statistics provide broad citywide administrative context but cannot measure micro-level street safety or predict real-time incident risk on individual street segments.
+
+---
+
+## 🏛️ Archived Cloud Database Architecture
+
+For academic evaluation, hackathon judging, and future production deployment, the complete backend database architecture designed for SafeRoute is preserved in the [docs/database/](file:///docs/database/) directory:
+
+- **PostgreSQL Schemas:** Baseline tables for `profiles` and `community_reports` ([docs/database/migrations/](file:///docs/database/migrations/)).
+- **Row Level Security (RLS):** Policies enforcing authenticated user isolation and anonymous notice shielding.
+- **Server-Side Abuse Prevention:** Keyed HMAC-SHA-256 rate limiting with server-side secrets, row-level locking (`SELECT ... FOR UPDATE`), and rightmost proxy IP extraction (`cf-connecting-ip`, `x-forwarded-for`).
+- **Edge Function Reference:** Web Crypto API HMAC computation implementation ([docs/database/functions/submit-report/index.ts](file:///docs/database/functions/submit-report/index.ts)).
+- **pgTAP Test Suite:** Automated PostgreSQL engine security assertions ([docs/database/tests/database_security.test.sql](file:///docs/database/tests/database_security.test.sql)).
+
+See [docs/database/README.md](file:///docs/database/README.md) for full database documentation and deployment instructions.
 
 ---
 
